@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#fff7ed" />
+  <title>A Tiny Question</title>
+  <meta name="description" content="A playful little yes-or-no question with a celebratory surprise." />
+  <style>
+    :root { --ink:#291c3a; --pink:#ff4f87; --violet:#6c3cff; --cream:#fff9ef; }
+    * { box-sizing:border-box; }
+    html, body { width:100%; min-height:100%; margin:0; }
+    body {
+      min-height:100svh; overflow:hidden; color:var(--ink);
+      font-family:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;
+      background:
+        radial-gradient(circle at 18% 18%, #ffd9e7 0 6%, transparent 22%),
+        radial-gradient(circle at 82% 80%, #dcd3ff 0 7%, transparent 24%),
+        linear-gradient(135deg,#fff9e8,#fff2f7 50%,#f0ecff);
+    }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.48; background-image:radial-gradient(#fff 1.4px,transparent 1.4px); background-size:24px 24px; }
+    main { min-height:100svh; display:grid; place-items:center; padding:24px; position:relative; }
+    .card {
+      width:min(92vw,620px); min-height:390px; padding:58px 34px 44px; text-align:center;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      position:relative; z-index:2;
+    }
+    .mini { margin:0 0 12px; color:#7a668b; font-weight:800; letter-spacing:.18em; text-transform:uppercase; font-size:.78rem; }
+    h1 { margin:0; max-width:500px; font-size:clamp(2.25rem,7vw,4.6rem); line-height:.96; letter-spacing:-.055em; }
+    .spark { display:inline-block; animation:float 2.2s ease-in-out infinite; }
+    p { margin:22px auto 30px; max-width:430px; color:#766983; font-size:1.05rem; line-height:1.6; }
+    button { border:0; cursor:pointer; font:inherit; font-size:1.15rem; font-weight:850; min-width:180px; padding:20px 34px; border-radius:999px; transition:transform .18s ease,box-shadow .18s ease,font-size .18s ease,padding .18s ease; }
+    button:focus-visible { outline:4px solid rgba(108,60,255,.27); outline-offset:4px; }
+    #start { color:#fff; font-size:1.08rem; background:linear-gradient(135deg,var(--violet),var(--pink)); box-shadow:0 14px 30px rgba(149,61,183,.28); }
+    #start:hover { transform:translateY(-3px) scale(1.02); box-shadow:0 18px 36px rgba(149,61,183,.36); }
+    #choices { display:none; align-items:center; justify-content:center; gap:18px; min-height:62px; }
+    #choices.show { display:flex; animation:pop .42s cubic-bezier(.2,.8,.2,1); }
+    #yes { color:#fff; background:linear-gradient(135deg,#18bb8d,#58d488); box-shadow:0 12px 26px rgba(24,187,141,.24); }
+    #yes:hover { transform:translateY(-3px) scale(1.04); }
+    #no { color:#65596e; background:#fff; border:1px solid #e9deeb; box-shadow:0 9px 22px rgba(54,30,72,.12); z-index:10; }
+    #no.running { position:fixed; margin:0; transform-origin:top left; transition:left .3s cubic-bezier(.2,.9,.2,1),top .3s cubic-bezier(.2,.9,.2,1),transform .18s ease; }
+    .success { display:none; }
+    .success.show { display:block; animation:pop .55s cubic-bezier(.2,.9,.2,1); }
+    .success h2 { margin:4px 0 12px; font-size:clamp(2.6rem,8vw,5rem); line-height:1; letter-spacing:-.05em; background:linear-gradient(135deg,var(--violet),var(--pink),#ff9d2e); color:transparent; background-clip:text; }
+    .success p { margin-bottom:0; }
+    .trophy { font-size:4rem; display:block; animation:bounce .8s ease infinite alternate; }
+    .confetti { position:fixed; top:-24px; z-index:20; pointer-events:none; border-radius:2px; animation:fall linear forwards; }
+    @keyframes fall { to { transform:translate3d(var(--drift),110vh,0) rotate(900deg); } }
+    @keyframes float { 50% { transform:translateY(-7px) rotate(7deg); } }
+    @keyframes bounce { to { transform:translateY(-10px) rotate(5deg); } }
+    @keyframes pop { from { opacity:0; transform:scale(.84); } to { opacity:1; transform:scale(1); } }
+    @media (max-width:560px) { .card{min-height:420px;padding:44px 22px}.choices{gap:12px}button{min-width:150px;padding:18px 26px;font-size:1.05rem} }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important} }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card" aria-live="polite">
+      <div id="question">
+        <p class="mini">One tiny question</p>
+        <h1>Are you ready? <span class="spark" aria-hidden="true">✨</span></h1>
+        <p>There is only one correct answer. Choose wisely.</p>
+        <button id="start" type="button">Show me</button>
+        <div id="choices" aria-label="Choose your answer">
+          <button id="yes" type="button">Yes! 🎉</button>
+          <button id="no" type="button" aria-label="No, click to make this button move">No</button>
+        </div>
+      </div>
+      <div id="success" class="success">
+        <span class="trophy" aria-hidden="true">🏆</span>
+        <h2>Congratulations!</h2>
+        <p>You made the perfect choice. Time to celebrate!</p>
+      </div>
+    </section>
+  </main>
+  <script>
+    const start=document.querySelector('#start');
+    const choices=document.querySelector('#choices');
+    const no=document.querySelector('#no');
+    const yes=document.querySelector('#yes');
+    const question=document.querySelector('#question');
+    const success=document.querySelector('#success');
+    let hop=0, noClicks=0;
+    const noMessages=[
+      'Are you sure?',
+      'Are you 100% sure?',
+      'Really sure?',
+      'Think again!',
+      'Don’t say no so quickly!',
+      'Is that your final answer?',
+      'Please reconsider!',
+      'You might regret this!',
+      'One last chance…',
+      'Okay, but the Yes button is waiting!'
+    ];
+
+    start.addEventListener('click',()=>{
+      start.style.display='none';
+      choices.classList.add('show');
+    });
+
+    function moveNo(){
+      no.classList.add('running');
+      const rect=no.getBoundingClientRect();
+      const pad=18, w=rect.width, h=rect.height;
+      const spots=[
+        [Math.random()*(innerWidth-w-pad*2)+pad,pad],
+        [Math.random()*(innerWidth-w-pad*2)+pad,innerHeight-h-pad],
+        [pad,Math.random()*(innerHeight-h-pad*2)+pad],
+        [innerWidth-w-pad,Math.random()*(innerHeight-h-pad*2)+pad]
+      ];
+      const [x,y]=spots[hop++%spots.length];
+      no.style.left=Math.max(pad,x)+'px'; no.style.top=Math.max(pad,y)+'px';
+    }
+    no.addEventListener('click',e=>{
+      e.preventDefault();
+      if(noClicks<noMessages.length) noClicks++;
+      no.textContent=noMessages[noClicks-1];
+      yes.style.transform=`scale(${1+noClicks*.08})`;
+      no.style.transform=`scale(${1-noClicks*.04})`;
+      moveNo();
+    });
+
+    yes.addEventListener('click',()=>{
+      no.style.display='none'; question.style.display='none'; success.classList.add('show');
+      celebrate();
+    });
+    function celebrate(){
+      const colors=['#ff4f87','#6c3cff','#18bb8d','#ffb22e','#45b6ff','#ff675c'];
+      for(let i=0;i<150;i++){
+        const bit=document.createElement('i'); bit.className='confetti';
+        bit.style.left=Math.random()*100+'vw'; bit.style.background=colors[i%colors.length];
+        bit.style.width=6+Math.random()*8+'px'; bit.style.height=8+Math.random()*12+'px';
+        bit.style.setProperty('--drift',(Math.random()*220-110)+'px');
+        bit.style.animationDuration=1.8+Math.random()*2.4+'s'; bit.style.animationDelay=Math.random()*.45+'s';
+        document.body.appendChild(bit); setTimeout(()=>bit.remove(),4800);
+      }
+    }
+  </script>
+</body>
+</html>
